@@ -49,9 +49,9 @@ jobs:
 
       - name: First set up.
         shell: cmd
-        working-directory: ${{ env.USERPROFILE }}\TBuild
+        working-directory: D:\TBuild
         run: |
-          SET PATH=%PATH%;%USERPROFILE%\TBuild\ThirdParty\Ninja;%USERPROFILE%\TBuild\ThirdParty\jom;%USERPROFILE%\TBuild\ThirdParty\cmake\bin;%USERPROFILE%\TBuild\ThirdParty\Git\cmd;%USERPROFILE%\TBuild\ThirdParty\yasm;%USERPROFILE%\TBuild\ThirdParty\Python39;%USERPROFILE%\TBuild\ThirdParty\Python39\Scripts;%USERPROFILE%\TBuild\ThirdParty\NuGet
+          SET PATH=%PATH%;D:\TBuild\ThirdParty\Ninja;D:\TBuild\ThirdParty\jom;D:\TBuild\ThirdParty\cmake\bin;D:\TBuild\ThirdParty\Git\cmd;D:\TBuild\ThirdParty\yasm;D:\TBuild\ThirdParty\Python39;D:\TBuild\ThirdParty\Python39\Scripts;D:\TBuild\ThirdParty\NuGet
           echo %PATH% > PATH.txt
           SET /P FINAL_PATH= < PATH.txt
           echo %FINAL_PATH% >> %GITHUB_PATH%
@@ -69,20 +69,20 @@ jobs:
 
       - name: Libraries.
         shell: cmd
-        working-directory: ${{ env.USERPROFILE }}\TBuild\${{ env.REPO_NAME }}\Telegram\build\prepare
+        working-directory: D:\TBuild\${{ env.REPO_NAME }}\Telegram\build\prepare
         run: |
           win.bat x64
 
       - name: Telegram Desktop build.
         shell: cmd
-        working-directory: ${{ env.USERPROFILE }}\TBuild\${{ env.REPO_NAME }}\Telegram
+        working-directory: D:\TBuild\${{ env.REPO_NAME }}\Telegram
         run: |
           configure.bat x64 -D TDESKTOP_API_ID=2040 -D TDESKTOP_API_HASH=b18441a1ff607e10a989891a5462e627 -D DESKTOP_APP_USE_PACKAGED=OFF -D DESKTOP_APP_DISABLE_CRASH_REPORTS=OFF
           cmake --build ../out --config Release --target Telegram -- /m:4
 
       - name: Move artifact.
         shell: cmd
-        working-directory: ${{ env.USERPROFILE }}\TBuild\${{ env.REPO_NAME }}\out\Release
+        working-directory: D:\TBuild\${{ env.REPO_NAME }}\out\Release
         run: |
           mkdir D:\Artifact
           if exist AyuGram.exe copy AyuGram.exe D:\Artifact\Senseigram.exe
