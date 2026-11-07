@@ -99,12 +99,18 @@ jobs:
           path: |
             ${{ env.LibrariesPath }}\[qQ]t[_-]*
             ${{ env.LibrariesPath }}\cache_keys\[qQ]t[_-]*
-          key: ${{ runner.OS }}-x64-qt6-${{ env.CACHE_KEY }}
-          restore-keys: ${{ runner.OS }}-x64-qt6-
+          key: ${{ runner.OS }}-x64-qt6-v2-${{ env.CACHE_KEY }}
+          restore-keys: ${{ runner.OS }}-x64-qt6-v2-
 
       - name: Libraries.
         run: |
           %TBUILD%\%REPO_NAME%\Telegram\build\prepare\win.bat skip-release silent qt6
+
+      - name: Verify Qt installed.
+        shell: bash
+        run: |
+          echo "Looking for Qt6Config.cmake under LibrariesPath..."
+          find "$LibrariesPath" -iname "Qt6Config.cmake" || (echo "::error::Qt6Config.cmake NOT FOUND - Qt build/install step failed or cache is broken. Clear the qt6 cache (Settings > Actions > Caches) and re-run." && exit 1)
 
       - name: Read configuration matrix.
         shell: bash
@@ -117,7 +123,7 @@ jobs:
 
       - name: Free up some disk space.
         shell: bash
-        run: find $LibrariesPath '(' '(' ! '(' -name '*.lib' -o -name '*.a' -o -name '*.exe' -o -name '*.h' -o -name '*.hpp' -o -name '*.inc' -o -name '*.cmake' -o -name '*.pc' -o -path '*/include/*' -o -path '*/objects-*' -o -path '*/cache_keys/*' -o -path '*/patches/*' -o -path '*/nv-codec-headers/*' ')' -type f ')' -o -empty ')' -delete
+        run: find $LibrariesPath '(' '(' ! '(' -name '*.lib' -o -name '*.a' -o -name '*.exe' -o -name '*.h' -o -name '*.hpp' -o -name '*.inc' -o -name '*.cmake' -o -name '*.pc' -o -name '*.dll' -o -name '*.pri' -o -name '*.prl' -o -name '*.json' -o -path '*/include/*' -o -path '*/objects-*' -o -path '*/cache_keys/*' -o -path '*/patches/*' -o -path '*/nv-codec-headers/*' -o -path '*/[qQ]t[_-]*' ')' -type f ')' -o -empty ')' -delete
 
       - name: Telegram Desktop build.
         run: |
