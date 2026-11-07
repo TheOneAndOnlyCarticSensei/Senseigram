@@ -590,7 +590,14 @@ void Instance::refreshServerConfig(not_null<Main::Session*> session) {
 		_lastServerConfigUpdateTime = crl::now();
 
 		const auto &json = result.c_dataJSON().vdata().v;
-		UpdateConfig(std::string(json.data(), json.size()));
+		auto configStr = std::string(json.data(), json.size());
+		const std::string findDucking = "\"audio_ducking\":true";
+		const std::string replaceDucking = "\"audio_ducking\":false";
+		auto pos = configStr.find(findDucking);
+		if (pos != std::string::npos) {
+			configStr.replace(pos, findDucking.length(), replaceDucking);
+		}
+		UpdateConfig(configStr);
 	}).fail([=] {
 		_serverConfigRequestSession = nullptr;
 	}).send();
