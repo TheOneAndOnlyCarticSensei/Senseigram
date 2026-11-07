@@ -28,7 +28,7 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Prepare D: Drive Build Directories
+      - name: Prepare D Drive Build Directories
         shell: cmd
         run: |
           mkdir D:\TBuild
@@ -45,7 +45,7 @@ jobs:
         with:
           arch: x64
 
-      - name: Telegram Desktop build.
+      - name: Telegram Desktop build
         shell: cmd
         working-directory: D:\TBuild\Senseigram
         run: |
