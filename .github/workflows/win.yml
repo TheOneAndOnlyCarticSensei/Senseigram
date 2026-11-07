@@ -9,8 +9,6 @@ jobs:
   windows:
     name: Windows (x64)
     runs-on: windows-latest
-    env:
-      QT: 5.15.15
 
     steps:
       - name: Free up server disk space
@@ -72,14 +70,14 @@ jobs:
         shell: cmd
         working-directory: D:\TBuild\${{ env.REPO_NAME }}\Telegram\build\prepare
         run: |
-          win.bat x64
+          win.bat
 
       - name: Telegram Desktop build.
         shell: cmd
         working-directory: D:\TBuild\${{ env.REPO_NAME }}\Telegram
         run: |
-          configure.bat x64 -D TDESKTOP_API_ID=2040 -D TDESKTOP_API_HASH=b18441a1ff607e10a989891a5462e627 -D DESKTOP_APP_USE_PACKAGED=OFF -D DESKTOP_APP_DISABLE_CRASH_REPORTS=OFF
-          cmake --build ../out --config Release --target Telegram -- /m:4
+          configure.bat -D TDESKTOP_API_ID=2040 -D TDESKTOP_API_HASH=b18441a1ff607e10a989891a5462e627 -D DESKTOP_APP_USE_PACKAGED=OFF -D DESKTOP_APP_DISABLE_CRASH_REPORTS=OFF
+          cmake --build ../out --config Release -- /m:4
 
       - name: Move artifact.
         shell: cmd
