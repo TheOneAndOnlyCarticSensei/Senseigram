@@ -1,4 +1,4 @@
-name: Windows Build
+name: Windows.
 
 on:
   push:
@@ -6,14 +6,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  windows:
     name: Windows (x64)
     runs-on: windows-latest
+    env:
+      QT: 5.15.15
 
     steps:
-      - name: Enable Long Paths in Git
-        run: git config --system core.longpaths true
-
       - name: Free up server disk space
         shell: pwsh
         run: |
@@ -24,42 +23,74 @@ jobs:
           Remove-Item -Recurse -Force "C:\hostedtoolcache\windows\Java" -ErrorAction SilentlyContinue
           Remove-Item -Recurse -Force "C:\Program Files\dotnet" -ErrorAction SilentlyContinue
 
-      - name: Checkout Repository
+      - name: Prepare directories.
+        shell: cmd
+        run: |
+          mkdir D:\TBuild
+          mkdir D:\TBuild\Libraries
+          mkdir D:\TBuild\ThirdParty
+          mklink /J "%USERPROFILE%\TBuild" "D:\TBuild"
+
+      - name: Get repository name.
+        shell: bash
+        run: |
+          echo "REPO_NAME=${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/}" >> $GITHUB_ENV
+
+      - name: Clone.
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          path: ${{ env.REPO_NAME }}
 
-      - name: Move to D Drive Fast
+      - name: Move repo to TBuild.
         shell: cmd
         run: |
-          mkdir D:\TBuild\Senseigram
-          robocopy "%GITHUB_WORKSPACE%" "D:\TBuild\Senseigram" /E /R:0 /W:0 /MT:8 /XJD /NJH /NJS
-          if %ERRORLEVEL% LSS 8 exit 0
+          move "${{ env.REPO_NAME }}" "D:\TBuild\${{ env.REPO_NAME }}"
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      - name: First set up.
+        shell: cmd
+        working-directory: ${{ env.USERPROFILE }}\TBuild
+        run: |
+          SET PATH=%PATH%;%USERPROFILE%\TBuild\ThirdParty\Ninja;%USERPROFILE%\TBuild\ThirdParty\jom;%USERPROFILE%\TBuild\ThirdParty\cmake\bin;%USERPROFILE%\TBuild\ThirdParty\Git\cmd;%USERPROFILE%\TBuild\ThirdParty\yasm;%USERPROFILE%\TBuild\ThirdParty\Python39;%USERPROFILE%\TBuild\ThirdParty\Python39\Scripts;%USERPROFILE%\TBuild\ThirdParty\NuGet
+          echo %PATH% > PATH.txt
+          SET /P FINAL_PATH= < PATH.txt
+          echo %FINAL_PATH% >> %GITHUB_PATH%
+          DEL /Q PATH.txt
 
-      - name: Set up MSVC environment
+      - name: Native Tools Command Prompt.
         uses: ilammy/msvc-dev-cmd@v1
         with:
-          arch: x64
+          arch: x86_amd64
 
-      - name: Build Senseigram
+      - name: NuGet sources.
         shell: cmd
-        working-directory: D:\TBuild\Senseigram
         run: |
-          python build/win.py --force-git
+          nuget sources Remove -Name "Microsoft Visual Studio Offline Packages"
 
-      - name: Save Artifact
+      - name: Libraries.
         shell: cmd
+        working-directory: ${{ env.USERPROFILE }}\TBuild\${{ env.REPO_NAME }}\Telegram\build\prepare
+        run: |
+          win.bat x64
+
+      - name: Telegram Desktop build.
+        shell: cmd
+        working-directory: ${{ env.USERPROFILE }}\TBuild\${{ env.REPO_NAME }}\Telegram
+        run: |
+          configure.bat x64 -D TDESKTOP_API_ID=2040 -D TDESKTOP_API_HASH=b18441a1ff607e10a989891a5462e627 -D DESKTOP_APP_USE_PACKAGED=OFF -D DESKTOP_APP_DISABLE_CRASH_REPORTS=OFF
+          cmake --build ../out --config Release --target Telegram -- /m:4
+
+      - name: Move artifact.
+        shell: cmd
+        working-directory: ${{ env.USERPROFILE }}\TBuild\${{ env.REPO_NAME }}\out\Release
         run: |
           mkdir D:\Artifact
-          copy D:\TBuild\Senseigram\out\Release\Senseigram.exe D:\Artifact\ || copy D:\TBuild\Senseigram\out\Release\Telegram.exe D:\Artifact\Senseigram.exe
+          if exist AyuGram.exe copy AyuGram.exe D:\Artifact\Senseigram.exe
+          if exist Telegram.exe copy Telegram.exe D:\Artifact\Senseigram.exe
+          if exist Senseigram.exe copy Senseigram.exe D:\Artifact\Senseigram.exe
 
-      - name: Upload Artifact
+      - name: Upload artifact.
         uses: actions/upload-artifact@v4
         with:
-          name: Senseigram-Executable
+          name: Senseigram-Windows-x64
           path: D:\Artifact\Senseigram.exe
