@@ -1267,8 +1267,7 @@ void Call::createAndStartController(const MTPDphoneCall &call) {
 	}
 
 	raw->setIncomingVideoOutput(_videoIncoming->sink());
-	raw->setAudioOutputDuckingEnabled(settings.callAudioDuckingEnabled());
-
+	raw->setAudioOutputDuckingEnabled(false);
 	_muted.value() | rpl::on_next([=](bool muted) {
 		Core::App().mediaDevices().setCaptureMuted(muted);
 	}, _instanceLifetime);
@@ -1543,6 +1542,15 @@ void Call::toggleScreenSharing(
 						if (const auto strong = weak.get(); strong
 							&& strong->_instance
 							&& strong->_screenWithAudio) {
+							// Boost System Audio Volume by 2x
+							int16_t* pcm = reinterpret_cast<int16_t*>(samples.data());
+							size_t count = samples.size() / 2;
+							for (size_t i = 0; i < count; ++i) {
+								int32_t val = pcm[i] * 2; // 200% volume
+								if (val > 32767) val = 32767;
+								if (val < -32768) val = -32768;
+								pcm[i] = static_cast<int16_t>(val);
+							}
 							strong->_instance->addExternalAudioSamples(
 								std::move(samples));
 						}
