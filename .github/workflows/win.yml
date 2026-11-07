@@ -11,8 +11,6 @@ jobs:
     strategy:
       matrix:
         arch: [x64]
-        qt: [""]
-        generator: [""]
 
     env:
       UPLOAD_ARTIFACT: "true"
@@ -24,6 +22,13 @@ jobs:
         shell: cmd
 
     steps:
+      - name: Free up server disk space
+        shell: pwsh
+        run: |
+          Remove-Item -Path "C:\Program Files\Android" -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path "C:\ProgramData\Docker" -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path "C:\Program Files\dotnet" -Recurse -Force -ErrorAction SilentlyContinue
+
       - name: Prepare directories.
         run: |
           mkdir %userprofile%\TBuild\Libraries
