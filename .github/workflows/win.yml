@@ -11,6 +11,8 @@ jobs:
     runs-on: windows-2022
     env:
       GYP_MSVS_VERSION: "2022"
+      Platform: "x64"
+      VSCMD_ARG_TGT_ARCH: "x64"
 
     steps:
       - name: Free up server disk space
@@ -45,13 +47,14 @@ jobs:
         run: |
           move "${{ env.REPO_NAME }}" "D:\TBuild\${{ env.REPO_NAME }}"
 
-      - name: Cache Prebuilt Libraries
-        uses: actions/cache@v4
+      - name: Restore Cached Libraries
+        id: cache-libs
+        uses: actions/cache/restore@v4
         with:
           path: |
             D:\TBuild\ThirdParty
             D:\TBuild\Libraries
-          key: tbuild-libs-x64-v1
+          key: tbuild-libs-win64-v3
 
       - name: First set up.
         shell: cmd
@@ -77,16 +80,38 @@ jobs:
           nuget sources Remove -Name "Microsoft Visual Studio Offline Packages" || ver > nul
 
       - name: Libraries.
+        if: steps.cache-libs.outputs.cache-hit != 'true'
         shell: cmd
         working-directory: D:\TBuild\${{ env.REPO_NAME }}\Telegram\build\prepare
         run: |
           win.bat
 
+      - name: Save Libraries Cache Always
+        if: always() && steps.cache-libs.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            D:\TBuild\ThirdParty
+            D:\TBuild\Libraries
+          key: tbuild-libs-win64-v3
+
       - name: Telegram Desktop build.
-        shell: cmd
+        shell: pwsh
         working-directory: D:\TBuild\${{ env.REPO_NAME }}\Telegram
         run: |
-          configure.bat -D TDESKTOP_API_ID=2040 -D TDESKTOP_API_HASH=b18441a1ff607e10a989891a5462e627 -D DESKTOP_APP_USE_PACKAGED=OFF -D DESKTOP_APP_DISABLE_CRASH_REPORTS=OFF
+          $qtConfig = Get-ChildItem -Path "D:\TBuild\Libraries" -Filter "Qt6Config.cmake" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($qtConfig) {
+            $qtDir = $qtConfig.DirectoryName -replace '\\', '/'
+            $qtRoot = $qtConfig.Directory.Parent.Parent.FullName -replace '\\', '/'
+            Write-Host "Found Qt6 at: $qtDir"
+            $env:CMAKE_PREFIX_PATH = "$qtRoot;D:/TBuild/Libraries/win64"
+            $env:Qt6_DIR = $qtDir
+          }
+          cmd /c "configure.bat x64 -D TDESKTOP_API_ID=2040 -D TDESKTOP_API_HASH=b18441a1ff607e10a989891a5462e627 -D DESKTOP_APP_USE_PACKAGED=OFF -D DESKTOP_APP_DISABLE_CRASH_REPORTS=OFF -D Qt6_DIR=`"$qtDir`""
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Retrying configure.bat without x64 arg..."
+            cmd /c "configure.bat -D TDESKTOP_API_ID=2040 -D TDESKTOP_API_HASH=b18441a1ff607e10a989891a5462e627 -D DESKTOP_APP_USE_PACKAGED=OFF -D DESKTOP_APP_DISABLE_CRASH_REPORTS=OFF -D Qt6_DIR=`"$qtDir`" -A x64"
+          }
           cmake --build ../out --config Release -- /m:4
 
       - name: Move artifact.
