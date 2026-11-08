@@ -13,8 +13,17 @@ jobs:
       GYP_MSVS_VERSION: "2022"
       Platform: "x64"
       VSCMD_ARG_TGT_ARCH: "x64"
+      PreferredToolArchitecture: "x64"
+      _CL_: "/Zm2000"
 
     steps:
+      - name: Add 32GB Virtual RAM (Pagefile) on D drive
+        shell: cmd
+        run: |
+          wmic computersystem where name="%computername%" set AutomaticManagedPagefile=False || ver > nul
+          wmic pagefileset create name="D:\\pagefile.sys" || ver > nul
+          wmic pagefileset where name="D:\\pagefile.sys" set InitialSize=16384,MaximumSize=32768 || ver > nul
+
       - name: Free up server disk space
         shell: pwsh
         run: |
@@ -112,16 +121,25 @@ jobs:
             Write-Host "Retrying configure.bat without x64 arg..."
             cmd /c "configure.bat -D TDESKTOP_API_ID=2040 -D TDESKTOP_API_HASH=b18441a1ff607e10a989891a5462e627 -D DESKTOP_APP_USE_PACKAGED=OFF -D DESKTOP_APP_DISABLE_CRASH_REPORTS=OFF -D Qt6_DIR=`"$qtDir`" -A x64"
           }
-          cmake --build ../out --config Release -- /m:4
+          cmake --build ../out --config Release -- /m:2 /p:CL_MPCount=2 /p:PreferredToolArchitecture=x64
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "Finishing remaining files in low-memory single-process mode..."
+            cmake --build ../out --config Release -- /m:1 /p:CL_MPCount=1 /p:PreferredToolArchitecture=x64
+          }
 
       - name: Move artifact.
-        shell: cmd
+        shell: pwsh
         working-directory: D:\TBuild\${{ env.REPO_NAME }}\out\Release
         run: |
-          mkdir D:\Artifact
-          if exist AyuGram.exe copy AyuGram.exe D:\Artifact\Senseigram.exe
-          if exist Telegram.exe copy Telegram.exe D:\Artifact\Senseigram.exe
-          if exist Senseigram.exe copy Senseigram.exe D:\Artifact\Senseigram.exe
+          New-Item -ItemType Directory -Force -Path "D:\Artifact" | Out-Null
+          $exe = Get-ChildItem -Path "D:\TBuild\${{ env.REPO_NAME }}\out\Release" -Filter "*.exe" -Recurse -ErrorAction SilentlyContinue | Sort-Object Length -Descending | Select-Object -First 1
+          if ($exe) {
+            Write-Host "Found compiled binary: $($exe.FullName)"
+            Copy-Item $exe.FullName "D:\Artifact\Senseigram.exe" -Force
+          } else {
+            Write-Error "No .exe found in Release directory!"
+            exit 1
+          }
 
       - name: Upload artifact.
         uses: actions/upload-artifact@v4
