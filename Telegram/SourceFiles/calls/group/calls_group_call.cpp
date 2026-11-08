@@ -3108,8 +3108,7 @@ bool GroupCall::tryCreateController() {
 			return result;
 		},
 		.videoContentType = tgcalls::VideoContentType::Generic,
-		.initialEnableNoiseSuppression
-			= settings.groupCallNoiseSuppression(),
+		.initialEnableNoiseSuppression = false,
 		.videoCodecPreferences = lookupVideoCodecPreferences(),
 		.requestMediaChannelDescriptions = [=, call = base::make_weak(this)](
 			const std::vector<uint32_t> &ssrcs,
