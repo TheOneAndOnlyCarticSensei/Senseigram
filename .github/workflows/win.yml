@@ -56,6 +56,45 @@ jobs:
         run: |
           move "${{ env.REPO_NAME }}" "D:\TBuild\${{ env.REPO_NAME }}"
 
+      - name: Fix ICO files to valid Windows 3.00 format
+        shell: pwsh
+        working-directory: D:\TBuild\${{ env.REPO_NAME }}\Telegram\Resources
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          $icoFiles = Get-ChildItem -Path . -Filter "*.ico" -Recurse
+          foreach ($file in $icoFiles) {
+            try {
+              $img = [System.Drawing.Image]::FromFile($file.FullName)
+              $bmp = New-Object System.Drawing.Bitmap($img, 32, 32)
+              $img.Dispose()
+              $ms = New-Object System.IO.MemoryStream
+              $bmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Bmp)
+              $bmpBytes = $ms.ToArray()
+              $ms.Dispose()
+              $bmp.Dispose()
+              # Strip 14-byte BITMAPFILEHEADER and double biHeight for ICO XOR+AND mask
+              $dibSize = $bmpBytes.Length - 14
+              $andMaskSize = 4 * 32 # 32 rows * 4 bytes stride
+              $totalDataSize = $dibSize + $andMaskSize
+              $fs = [System.IO.File]::Open($file.FullName, [System.IO.FileMode]::Create)
+              $bw = New-Object System.IO.BinaryWriter($fs)
+              # ICONDIR (6 bytes): Reserved=0, Type=1 (ICO), Count=1
+              $bw.Write([uint16]0); $bw.Write([uint16]1); $bw.Write([uint16]1)
+              # ICONDIRENTRY (16 bytes): 32x32, 0 colors, 0 reserved, 1 plane, 32 bpp
+              $bw.Write([byte]32); $bw.Write([byte]32); $bw.Write([byte]0); $bw.Write([byte]0)
+              $bw.Write([uint16]1); $bw.Write([uint16]32)
+              $bw.Write([uint32]$totalDataSize); $bw.Write([uint32]22)
+              # Write BITMAPINFOHEADER with height = 64 (32*2)
+              [BitConverter]::GetBytes([int32]64).CopyTo($bmpBytes, 14 + 8)
+              $bw.Write($bmpBytes, 14, $dibSize)
+              $bw.Write((New-Object byte[] $andMaskSize))
+              $bw.Close(); $fs.Close()
+              Write-Host "Fixed ICO 3.00 format: $($file.FullName)"
+            } catch {
+              Write-Host "Skipping or already valid: $($file.FullName)"
+            }
+          }
+
       - name: Restore Cached Libraries
         id: cache-libs
         uses: actions/cache/restore@v4
