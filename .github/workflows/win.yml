@@ -45,6 +45,14 @@ jobs:
         run: |
           move "${{ env.REPO_NAME }}" "D:\TBuild\${{ env.REPO_NAME }}"
 
+      - name: Cache Prebuilt Libraries
+        uses: actions/cache@v4
+        with:
+          path: |
+            D:\TBuild\ThirdParty
+            D:\TBuild\Libraries
+          key: tbuild-libs-x64-v1
+
       - name: First set up.
         shell: cmd
         working-directory: D:\TBuild
@@ -58,10 +66,10 @@ jobs:
           echo D:\TBuild\ThirdParty\Python39\Scripts>> %GITHUB_PATH%
           echo D:\TBuild\ThirdParty\NuGet>> %GITHUB_PATH%
 
-      - name: Native Tools Command Prompt.
+      - name: Native Tools Command Prompt (64-bit).
         uses: ilammy/msvc-dev-cmd@v1
         with:
-          arch: x86_amd64
+          arch: amd64
 
       - name: NuGet sources.
         shell: cmd
