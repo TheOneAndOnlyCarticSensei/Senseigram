@@ -3175,6 +3175,7 @@ bool GroupCall::tryCreateScreencast() {
 		.createAudioDeviceModule = Webrtc::LoopbackAudioDeviceModuleCreator(),
 		.videoCapture = _screenCapture,
 		.videoContentType = tgcalls::VideoContentType::Screencast,
+		.initialEnableNoiseSuppression = false,
 		.videoCodecPreferences = lookupVideoCodecPreferences(),
 		.e2eEncryptDecrypt = e2eEncryptDecrypt(),
 	};
